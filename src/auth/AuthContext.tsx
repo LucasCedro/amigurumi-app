@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -37,10 +37,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const cfg = (Constants.expoConfig?.extra?.googleAuth ?? {}) as GoogleConfig;
+
+  // `useAuthRequest` lança erro se o clientId da plataforma atual estiver vazio.
+  // Passamos um placeholder pra não quebrar e controlamos "configurado" à parte.
+  const PLACEHOLDER = 'unconfigured.apps.googleusercontent.com';
+  const isConfigured =
+    Platform.OS === 'web'
+      ? !!cfg.webClientId
+      : Platform.OS === 'ios'
+        ? !!cfg.iosClientId
+        : !!cfg.androidClientId;
+
   const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: cfg.webClientId || undefined,
-    androidClientId: cfg.androidClientId || undefined,
-    iosClientId: cfg.iosClientId || undefined,
+    webClientId: cfg.webClientId || PLACEHOLDER,
+    androidClientId: cfg.androidClientId || PLACEHOLDER,
+    iosClientId: cfg.iosClientId || PLACEHOLDER,
   });
 
   useEffect(() => {
@@ -74,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signIn = async () => {
-    if (!request) {
+    if (!isConfigured || !request) {
       Alert.alert(
         'Login ainda não configurado',
         'Falta cadastrar os Client IDs do Google em app.json → extra.googleAuth. Veja o README.',
@@ -90,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isConfigured: !!request, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, isConfigured, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
