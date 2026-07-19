@@ -1,0 +1,223 @@
+[
+  {
+    "id": "ovo",
+    "title": "Ovo de Amigurumi",
+    "world": "amigurumi",
+    "difficulty": "iniciante",
+    "isPremium": false,
+    "emoji": "🥚",
+    "description": "Base clássica em espiral. Ótimo para treinar aumentos e diminuições.",
+    "materials": [
+      "Fio de algodão nº 4 (ex.: Amigurumi Círculo)",
+      "Agulha de crochê 2,5 mm",
+      "Marcador de ponto",
+      "Fibra siliconada para enchimento",
+      "Agulha de tapeçaria"
+    ],
+    "notes": [
+      "Trabalhe em espiral contínua, sem fechar a carreira.",
+      "Use o marcador no 1º ponto de cada volta.",
+      "O número entre parênteses é o total de pontos ao fim da carreira."
+    ],
+    "rounds": [
+      {
+        "kind": "stitches",
+        "label": "1",
+        "isMagicRing": true,
+        "groups": [{ "pattern": [{ "stitch": "pb", "count": 6 }], "times": 1 }],
+        "totalStitches": 6
+      },
+      {
+        "kind": "stitches",
+        "label": "2",
+        "groups": [{ "pattern": [{ "stitch": "aum", "count": 6 }], "times": 1 }],
+        "totalStitches": 12
+      },
+      {
+        "kind": "stitches",
+        "label": "3",
+        "groups": [
+          { "pattern": [{ "stitch": "pb", "count": 1 }, { "stitch": "aum", "count": 1 }], "times": 6 }
+        ],
+        "totalStitches": 18
+      },
+      {
+        "kind": "stitches",
+        "label": "4",
+        "groups": [
+          { "pattern": [{ "stitch": "pb", "count": 2 }, { "stitch": "aum", "count": 1 }], "times": 6 }
+        ],
+        "totalStitches": 24
+      },
+      {
+        "kind": "stitches",
+        "label": "5",
+        "groups": [
+          { "pattern": [{ "stitch": "pb", "count": 3 }, { "stitch": "aum", "count": 1 }], "times": 6 }
+        ],
+        "totalStitches": 30
+      },
+      {
+        "kind": "stitches",
+        "label": "6",
+        "groups": [
+          { "pattern": [{ "stitch": "pb", "count": 4 }, { "stitch": "aum", "count": 1 }], "times": 6 }
+        ],
+        "totalStitches": 36
+      },
+      {
+        "kind": "stitches",
+        "label": "7",
+        "groups": [
+          { "pattern": [{ "stitch": "pb", "count": 5 }, { "stitch": "aum", "count": 1 }], "times": 6 }
+        ],
+        "totalStitches": 42
+      },
+      {
+        "kind": "stitches",
+        "label": "8",
+        "groups": [
+          { "pattern": [{ "stitch": "pb", "count": 6 }, { "stitch": "aum", "count": 1 }], "times": 6 }
+        ],
+        "totalStitches": 48
+      },
+      {
+        "kind": "stitches",
+        "label": "9 a 20",
+        "repeatRows": 12,
+        "groups": [{ "pattern": [{ "stitch": "pb", "count": 48 }], "times": 1 }],
+        "totalStitches": 48
+      },
+      {
+        "kind": "stitches",
+        "label": "21",
+        "groups": [
+          { "pattern": [{ "stitch": "pb", "count": 14 }, { "stitch": "dim", "count": 1 }], "times": 3 }
+        ],
+        "totalStitches": 45
+      },
+      {
+        "kind": "stitches",
+        "label": "22",
+        "groups": [{ "pattern": [{ "stitch": "pb", "count": 45 }], "times": 1 }],
+        "totalStitches": 45
+      },
+      {
+        "kind": "note",
+        "label": "Acabamento",
+        "text": "Arremate deixando um fio longo. Encha firme com fibra siliconada e feche a base costurando com a agulha de tapeçaria."
+      }
+    ]
+  },
+  {
+    "id": "esfera",
+    "title": "Esfera Perfeita",
+    "world": "amigurumi",
+    "difficulty": "intermediario",
+    "isPremium": true,
+    "emoji": "⚪",
+    "description": "Bola redondinha usando carreiras com deslocamento (o segredo pra não virar um hexágono).",
+    "materials": [
+      "Fio de algodão nº 4",
+      "Agulha de crochê 2,5 mm",
+      "Marcador de ponto",
+      "Fibra siliconada"
+    ],
+    "notes": [
+      "As carreiras 4 quebram a repetição pra distribuir os aumentos.",
+      "Encha aos poucos, antes de fechar demais a boca."
+    ],
+    "rounds": [
+      {
+        "kind": "stitches",
+        "label": "1",
+        "isMagicRing": true,
+        "groups": [{ "pattern": [{ "stitch": "pb", "count": 6 }], "times": 1 }],
+        "totalStitches": 6
+      },
+      {
+        "kind": "stitches",
+        "label": "2",
+        "groups": [{ "pattern": [{ "stitch": "aum", "count": 6 }], "times": 1 }],
+        "totalStitches": 12
+      },
+      {
+        "kind": "stitches",
+        "label": "3",
+        "groups": [
+          { "pattern": [{ "stitch": "pb", "count": 1 }, { "stitch": "aum", "count": 1 }], "times": 6 }
+        ],
+        "totalStitches": 18
+      },
+      {
+        "kind": "stitches",
+        "label": "4",
+        "groups": [
+          {
+            "pattern": [{ "stitch": "pb", "count": 1 }, { "stitch": "aum", "count": 1 }],
+            "times": 1,
+            "note": "início deslocado"
+          },
+          { "pattern": [{ "stitch": "pb", "count": 2 }, { "stitch": "aum", "count": 1 }], "times": 5 },
+          { "pattern": [{ "stitch": "pb", "count": 1 }], "times": 1 }
+        ],
+        "totalStitches": 24
+      },
+      {
+        "kind": "stitches",
+        "label": "5",
+        "groups": [
+          { "pattern": [{ "stitch": "pb", "count": 3 }, { "stitch": "aum", "count": 1 }], "times": 6 }
+        ],
+        "totalStitches": 30
+      },
+      {
+        "kind": "stitches",
+        "label": "6 a 8",
+        "repeatRows": 3,
+        "groups": [{ "pattern": [{ "stitch": "pb", "count": 30 }], "times": 1 }],
+        "totalStitches": 30
+      },
+      {
+        "kind": "stitches",
+        "label": "9",
+        "groups": [
+          { "pattern": [{ "stitch": "pb", "count": 3 }, { "stitch": "dim", "count": 1 }], "times": 6 }
+        ],
+        "totalStitches": 24
+      },
+      {
+        "kind": "stitches",
+        "label": "10",
+        "groups": [
+          { "pattern": [{ "stitch": "pb", "count": 2 }, { "stitch": "dim", "count": 1 }], "times": 6 }
+        ],
+        "totalStitches": 18
+      },
+      {
+        "kind": "note",
+        "label": "Enchimento",
+        "text": "Comece a encher a esfera com fibra siliconada, apertando bem antes de continuar diminuindo."
+      },
+      {
+        "kind": "stitches",
+        "label": "11",
+        "groups": [
+          { "pattern": [{ "stitch": "pb", "count": 1 }, { "stitch": "dim", "count": 1 }], "times": 6 }
+        ],
+        "totalStitches": 12
+      },
+      {
+        "kind": "stitches",
+        "label": "12",
+        "groups": [{ "pattern": [{ "stitch": "dim", "count": 6 }], "times": 1 }],
+        "totalStitches": 6
+      },
+      {
+        "kind": "note",
+        "label": "Acabamento",
+        "text": "Arremate, passe o fio pelos 6 pontos restantes, puxe pra fechar e esconda a ponta."
+      }
+    ]
+  }
+]
