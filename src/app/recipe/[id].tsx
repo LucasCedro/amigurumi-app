@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { Link, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -147,13 +147,14 @@ export default function RecipeDetailScreen() {
       </ScrollView>
 
       <View style={[styles.footer, { borderColor: theme.border, backgroundColor: theme.bg }]}>
-        <Link href={{ pathname: '/guide/[id]', params: { id: recipe.id } }} asChild>
-          <Pressable style={[styles.cta, { backgroundColor: theme.primary }]}>
-            <Text style={[styles.ctaText, { color: theme.primaryText }]}>
-              {started ? '▶  Continuar' : '▶  Iniciar guia'}
-            </Text>
-          </Pressable>
-        </Link>
+        <Pressable
+          onPress={() => router.push({ pathname: '/guide/[id]', params: { id: recipe.id } })}
+          style={[styles.cta, { backgroundColor: theme.primary }]}
+        >
+          <Text style={[styles.ctaText, { color: theme.primaryText }]}>
+            {started ? '▶  Continuar' : '▶  Iniciar guia'}
+          </Text>
+        </Pressable>
       </View>
     </View>
   );

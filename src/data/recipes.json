@@ -49,54 +49,6 @@
     ]
   },
   {
-    "id": "bolinha",
-    "title": "Esfera Perfeita",
-    "subtitle": "Base redonda · ~6 cm",
-    "world": "amigurumi",
-    "category": "base",
-    "tags": ["base", "esfera", "deslocamento"],
-    "difficulty": "intermediario",
-    "estimatedHours": 2,
-    "finalSizeCm": 6,
-    "isPremium": false,
-    "emoji": "⚪",
-    "author": { "name": "Amiguide" },
-    "description": "Esfera redondinha usando carreira com deslocamento (o segredo pra não virar hexágono).",
-    "colors": [{ "id": "creme", "label": "Creme", "hex": "#F0E3D0" }],
-    "materials": [
-      { "type": "fio", "label": "Fio de algodão nº 4", "color": "Creme", "amount": "1 novelo" },
-      { "type": "agulha", "label": "Agulha 2,5 mm" },
-      { "type": "enchimento", "label": "Fibra siliconada" }
-    ],
-    "notes": ["A carreira 4 quebra a repetição pra distribuir os aumentos."],
-    "pieces": [
-      {
-        "id": "esfera",
-        "name": "Esfera",
-        "qty": 1,
-        "startColor": "creme",
-        "rounds": [
-          { "kind": "stitches", "label": "1", "isMagicRing": true, "groups": [{ "pattern": [{ "stitch": "pb", "count": 6 }], "times": 1 }], "totalStitches": 6 },
-          { "kind": "stitches", "label": "2", "groups": [{ "pattern": [{ "stitch": "aum", "count": 6 }], "times": 1 }], "totalStitches": 12 },
-          { "kind": "stitches", "label": "3", "groups": [{ "pattern": [{ "stitch": "pb", "count": 1 }, { "stitch": "aum", "count": 1 }], "times": 6 }], "totalStitches": 18 },
-          { "kind": "stitches", "label": "4", "groups": [
-            { "pattern": [{ "stitch": "pb", "count": 1 }, { "stitch": "aum", "count": 1 }], "times": 1, "note": "início deslocado" },
-            { "pattern": [{ "stitch": "pb", "count": 2 }, { "stitch": "aum", "count": 1 }], "times": 5 },
-            { "pattern": [{ "stitch": "pb", "count": 1 }], "times": 1 }
-          ], "totalStitches": 24 },
-          { "kind": "stitches", "label": "5", "groups": [{ "pattern": [{ "stitch": "pb", "count": 3 }, { "stitch": "aum", "count": 1 }], "times": 6 }], "totalStitches": 30 },
-          { "kind": "stitches", "label": "6 a 8", "repeatRows": 3, "groups": [{ "pattern": [{ "stitch": "pb", "count": 30 }], "times": 1 }], "totalStitches": 30 },
-          { "kind": "stitches", "label": "9", "groups": [{ "pattern": [{ "stitch": "pb", "count": 3 }, { "stitch": "dim", "count": 1 }], "times": 6 }], "totalStitches": 24 },
-          { "kind": "stitches", "label": "10", "groups": [{ "pattern": [{ "stitch": "pb", "count": 2 }, { "stitch": "dim", "count": 1 }], "times": 6 }], "totalStitches": 18 },
-          { "kind": "note", "label": "Enchimento", "text": "Comece a encher firme com fibra siliconada." },
-          { "kind": "stitches", "label": "11", "groups": [{ "pattern": [{ "stitch": "pb", "count": 1 }, { "stitch": "dim", "count": 1 }], "times": 6 }], "totalStitches": 12 },
-          { "kind": "stitches", "label": "12", "groups": [{ "pattern": [{ "stitch": "dim", "count": 6 }], "times": 1 }], "totalStitches": 6 },
-          { "kind": "note", "label": "Acabamento", "text": "Passe o fio pelos 6 pontos restantes, puxe pra fechar e esconda a ponta." }
-        ]
-      }
-    ]
-  },
-  {
     "id": "morango",
     "title": "Morango",
     "subtitle": "Comidinha · ~8 cm",

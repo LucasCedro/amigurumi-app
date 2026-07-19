@@ -5,10 +5,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { SpiralProgress } from '@/components/SpiralProgress';
 import { getRecipe } from '@/data/recipes';
 import { STITCH_HINT, STITCHES } from '@/data/stitches';
 import { countCarreiras, type GuideRound } from '@/engine/guide';
-import { buildInstances, pieceInstanceLabel, progressFraction, type PieceInstance } from '@/engine/project';
+import {
+  buildInstances,
+  pieceInstanceLabel,
+  pieceProgress,
+  progressFraction,
+  type PieceInstance,
+} from '@/engine/project';
 import { getProject, saveProject } from '@/state/projects';
 import { useWorld } from '@/theme/world-context';
 import { font, radius, space } from '@/theme/tokens';
@@ -227,6 +234,7 @@ export default function GuideScreen() {
               stepIdx={stepIdx}
               totalCarreiras={totalCarreiras}
               pieceLabel={pieceInstanceLabel(instance)}
+              pieceFrac={pieceProgress(instance, roundIdx, stepIdx)}
               colorMap={colorMap}
             />
           )}
@@ -249,6 +257,7 @@ function StitchView({
   stepIdx,
   totalCarreiras,
   pieceLabel,
+  pieceFrac,
   colorMap,
 }: {
   pal: Palette;
@@ -256,6 +265,7 @@ function StitchView({
   stepIdx: number;
   totalCarreiras: number;
   pieceLabel: string;
+  pieceFrac: number;
   colorMap: Record<string, RecipeColor>;
 }) {
   const steps = round.steps!;
@@ -290,19 +300,25 @@ function StitchView({
         </View>
       )}
 
+      <SpiralProgress
+        size={196}
+        progress={pieceFrac}
+        color={info.color}
+        trackColor={pal.surface}
+        strokeWidth={9}
+      >
+        <Text style={[styles.spiralBig, { color: pal.fg }]}>{step.producedAfter}</Text>
+        <Text style={[styles.spiralSmall, { color: pal.muted }]}>de {round.totalStitches} pts</Text>
+      </SpiralProgress>
+
       <View style={[styles.stitchBadge, { borderColor: info.color }]}>
         <Text style={[styles.stitchInstruction, { color: info.color }]}>{info.instruction}</Text>
       </View>
       {!!hint && <Text style={[styles.stitchHint, { color: pal.muted }]}>{hint}</Text>}
       {!!step.groupNote && <Text style={[styles.stitchHint, { color: pal.muted }]}>({step.groupNote})</Text>}
 
-      <View style={styles.counters}>
-        <Counter pal={pal} big value={`${step.producedAfter}`} label={`de ${round.totalStitches} pontos`} />
-        <Counter pal={pal} value={`${stepIdx + 1}/${steps.length}`} label="pontos da carreira" />
-      </View>
-
       <Text style={[styles.next, { color: pal.muted }]}>
-        {next ? `Próximo: ${next.label}` : '✓ Fim da carreira'}
+        ponto {stepIdx + 1}/{steps.length} · {next ? `próximo: ${next.label}` : '✓ fim da carreira'}
       </Text>
     </>
   );
@@ -316,15 +332,6 @@ function NoteView({ pal, label, text }: { pal: Palette; label?: string; text: st
       <Text style={[styles.noteText, { color: pal.fg }]}>{text}</Text>
       <Text style={[styles.next, { color: pal.muted }]}>toque para continuar ›</Text>
     </>
-  );
-}
-
-function Counter({ pal, value, label, big }: { pal: Palette; value: string; label: string; big?: boolean }) {
-  return (
-    <View style={styles.counter}>
-      <Text style={[big ? styles.counterBig : styles.counterVal, { color: pal.fg }]}>{value}</Text>
-      <Text style={[styles.counterLabel, { color: pal.muted }]}>{label}</Text>
-    </View>
   );
 }
 
@@ -354,15 +361,12 @@ const styles = StyleSheet.create({
   colorDot: { width: 18, height: 18, borderRadius: 9 },
   bannerText: { fontSize: font.body, fontWeight: '700' },
 
-  stitchBadge: { borderWidth: 3, borderRadius: radius.xl, paddingHorizontal: 30, paddingVertical: 24, alignItems: 'center', minWidth: 250 },
-  stitchInstruction: { fontSize: 36, fontWeight: '900', letterSpacing: 0.5, textAlign: 'center' },
+  stitchBadge: { borderWidth: 3, borderRadius: radius.xl, paddingHorizontal: 30, paddingVertical: 18, alignItems: 'center', minWidth: 250 },
+  stitchInstruction: { fontSize: 34, fontWeight: '900', letterSpacing: 0.5, textAlign: 'center' },
   stitchHint: { fontSize: font.body },
 
-  counters: { flexDirection: 'row', gap: 32, marginTop: space.sm },
-  counter: { alignItems: 'center' },
-  counterBig: { fontSize: 46, fontWeight: '900' },
-  counterVal: { fontSize: 30, fontWeight: '800' },
-  counterLabel: { fontSize: font.tiny, marginTop: 2 },
+  spiralBig: { fontSize: 52, fontWeight: '900' },
+  spiralSmall: { fontSize: font.small, marginTop: -4 },
   next: { fontSize: font.body, fontWeight: '600', marginTop: 6 },
 
   noteEmoji: { fontSize: 42 },

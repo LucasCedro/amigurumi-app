@@ -66,6 +66,18 @@ export function progressFraction(recipe: Recipe, pos: Position, finished: boolea
   return Math.min(1, stepsCompleted(instances, pos) / total);
 }
 
+/** fração 0..1 de conclusão da peça atual (para a espiral) */
+export function pieceProgress(inst: PieceInstance, roundIdx: number, stepIdx: number): number {
+  if (inst.steps === 0) return 0;
+  let done = 0;
+  for (let r = 0; r < roundIdx && r < inst.guide.length; r++) {
+    const round = inst.guide[r];
+    done += round.kind === 'note' ? 1 : round.steps!.length;
+  }
+  done += stepIdx;
+  return Math.min(1, done / inst.steps);
+}
+
 export function pieceInstanceLabel(inst: PieceInstance): string {
   return inst.qty > 1 ? `${inst.name} ${inst.instanceNo}/${inst.qty}` : inst.name;
 }

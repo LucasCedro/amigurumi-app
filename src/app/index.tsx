@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { Link, useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -195,41 +195,41 @@ function ProjectCard({
 }
 
 function RecipeCard({ recipe, theme }: { recipe: Recipe; theme: WorldTheme }) {
+  const router = useRouter();
   const img = recipeImage(recipe.cover);
   return (
-    <Link href={{ pathname: '/recipe/[id]', params: { id: recipe.id } }} asChild>
-      <Pressable
-        style={({ pressed }) => [
-          styles.card,
-          { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.9 : 1 },
-          shadow(2),
-        ]}
-      >
-        <View style={[styles.cardImgBox, { backgroundColor: theme.surfaceAlt }]}>
-          {img ? (
-            <Image source={img} style={styles.cardImg} contentFit="cover" />
-          ) : (
-            <Text style={styles.cardEmoji}>{recipe.emoji ?? '🧶'}</Text>
-          )}
-          {recipe.isPremium && (
-            <View style={[styles.premiumTag, { backgroundColor: semantic.premium }]}>
-              <Text style={[styles.premiumText, { color: semantic.premiumText }]}>★ Premium</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.cardBody}>
-          <Text style={[styles.cardTitle, { color: theme.text }]}>{recipe.title}</Text>
-          <Text style={[styles.cardSub, { color: theme.textMuted }]} numberOfLines={1}>
-            {recipe.subtitle ?? recipe.description}
-          </Text>
-          <View style={styles.metaRow}>
-            <Meta text={DIFFICULTY_LABEL[recipe.difficulty]} theme={theme} />
-            {!!recipe.estimatedHours && <Meta text={`⏱ ${recipe.estimatedHours}h`} theme={theme} />}
-            <Meta text={`${recipe.pieces.length} peça${recipe.pieces.length > 1 ? 's' : ''}`} theme={theme} />
+    <Pressable
+      onPress={() => router.push({ pathname: '/recipe/[id]', params: { id: recipe.id } })}
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.9 : 1 },
+        shadow(2),
+      ]}
+    >
+      <View style={[styles.cardImgBox, { backgroundColor: theme.surfaceAlt }]}>
+        {img ? (
+          <Image source={img} style={styles.cardImg} contentFit="cover" />
+        ) : (
+          <Text style={styles.cardEmoji}>{recipe.emoji ?? '🧶'}</Text>
+        )}
+        {recipe.isPremium && (
+          <View style={[styles.premiumTag, { backgroundColor: semantic.premium }]}>
+            <Text style={[styles.premiumText, { color: semantic.premiumText }]}>★ Premium</Text>
           </View>
+        )}
+      </View>
+      <View style={styles.cardBody}>
+        <Text style={[styles.cardTitle, { color: theme.text }]}>{recipe.title}</Text>
+        <Text style={[styles.cardSub, { color: theme.textMuted }]} numberOfLines={1}>
+          {recipe.subtitle ?? recipe.description}
+        </Text>
+        <View style={styles.metaRow}>
+          <Meta text={DIFFICULTY_LABEL[recipe.difficulty]} theme={theme} />
+          {!!recipe.estimatedHours && <Meta text={`⏱ ${recipe.estimatedHours}h`} theme={theme} />}
+          <Meta text={`${recipe.pieces.length} peça${recipe.pieces.length > 1 ? 's' : ''}`} theme={theme} />
         </View>
-      </Pressable>
-    </Link>
+      </View>
+    </Pressable>
   );
 }
 
