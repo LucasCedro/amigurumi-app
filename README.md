@@ -42,9 +42,20 @@ Cada carreira (`round`) de pontos tem `groups[]`; cada grupo é um `pattern` (se
 - **Deslocamento** (vários grupos numa carreira, ex.: `2pb, 1aum, [4pb,1aum]x5, 2pb`)
 - **Passos informativos** (`kind: "note"`: enchimento, montagem, arremate)
 
+## Login com Google (OAuth)
+
+A estrutura já está pronta (`src/auth/AuthContext.tsx` + tela `account`). Para ativar de verdade:
+
+1. Crie credenciais OAuth no [Google Cloud Console](https://console.cloud.google.com/apis/credentials) (uma Web e uma Android; iOS não usamos).
+2. Preencha os IDs em `app.json` → `expo.extra.googleAuth` (`webClientId`, `androidClientId`).
+3. Sem os IDs, o botão entra em "modo demo" e só avisa que falta configurar.
+
+Persistência do usuário é local (AsyncStorage) por enquanto — depois plugamos backend (Supabase) pra salvar projetos na nuvem e planos pagos.
+
 ## Roadmap
 
+- [ ] Backend (Supabase): projetos na nuvem, receitas premium com trava no servidor
 - [ ] Botões de volume pra avançar/voltar ponto (dev build + `react-native-volume-manager`)
 - [ ] Mundo Tricô funcional
 - [ ] Upload de receitas pelo usuário
-- [ ] Compras no app (receitas premium)
+- [ ] Modo contador livre (sem receita)

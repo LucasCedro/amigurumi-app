@@ -1,12 +1,14 @@
+import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SpiralProgress } from '@/components/SpiralProgress';
 import { getRecipe } from '@/data/recipes';
+import { recipeImage } from '@/data/recipe-images';
 import { STITCH_HINT, STITCHES } from '@/data/stitches';
 import { countCarreiras, type GuideRound } from '@/engine/guide';
 import {
@@ -28,6 +30,7 @@ interface Palette {
   muted: string;
   primary: string;
   primaryText: string;
+  accent: string;
 }
 
 export default function GuideScreen() {
@@ -73,8 +76,8 @@ export default function GuideScreen() {
   }, [recipe, pieceIdx, roundIdx, stepIdx, finished]);
 
   const pal: Palette = dark
-    ? { bg: '#141210', surface: '#242019', fg: '#F5F1EC', muted: '#9A938E', primary: theme.primary, primaryText: theme.primaryText }
-    : { bg: theme.bg, surface: theme.surface, fg: theme.text, muted: theme.textMuted, primary: theme.primary, primaryText: theme.primaryText };
+    ? { bg: '#141210', surface: '#242019', fg: '#F5F1EC', muted: '#9A938E', primary: theme.primary, primaryText: theme.primaryText, accent: theme.accent }
+    : { bg: theme.bg, surface: theme.surface, fg: theme.text, muted: theme.textMuted, primary: theme.primary, primaryText: theme.primaryText, accent: theme.accent };
 
   if (!recipe || instances.length === 0) {
     return (
@@ -157,6 +160,19 @@ export default function GuideScreen() {
     setFinished(false);
   };
 
+  const confirmReset = () => {
+    Alert.alert(
+      'Reiniciar projeto?',
+      'Você volta pra primeira carreira da primeira peça e perde o progresso salvo. Não dá pra desfazer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Reiniciar', style: 'destructive', onPress: reset },
+      ],
+    );
+  };
+
+  const cover = recipeImage(recipe.cover);
+
   if (finished) {
     return (
       <View style={[styles.root, { backgroundColor: pal.bg }]}>
@@ -182,8 +198,11 @@ export default function GuideScreen() {
           <Pressable onPress={() => router.back()} hitSlop={12}>
             <Text style={[styles.icon, { color: pal.muted }]}>✕</Text>
           </Pressable>
+          {cover && (
+            <Image source={cover} style={[styles.headerThumb, { backgroundColor: pal.surface }]} contentFit="cover" />
+          )}
           <View style={styles.headerCenter}>
-            <Text style={[styles.recipeName, { color: pal.muted }]} numberOfLines={1}>
+            <Text style={[styles.recipeName, { color: pal.fg }]} numberOfLines={1}>
               {recipe.title} · {pct}%
             </Text>
             <View style={[styles.progressTrack, { backgroundColor: pal.surface }]}>
@@ -193,7 +212,7 @@ export default function GuideScreen() {
           <Pressable onPress={() => setDark((d) => !d)} hitSlop={10}>
             <Text style={[styles.icon, { color: pal.muted }]}>{dark ? '☀' : '☾'}</Text>
           </Pressable>
-          <Pressable onPress={reset} hitSlop={10}>
+          <Pressable onPress={confirmReset} hitSlop={10}>
             <Text style={[styles.icon, { color: pal.muted }]}>↺</Text>
           </Pressable>
         </View>
@@ -284,19 +303,21 @@ function StitchView({
       </Text>
 
       {isFirst && round.colorChanged && color && (
-        <View style={[styles.colorBanner, { backgroundColor: pal.surface }]}>
-          <View style={[styles.colorDot, { backgroundColor: color.hex }]} />
-          <Text style={[styles.bannerText, { color: pal.fg }]}>Troque para {color.label}</Text>
+        <View style={[styles.bigBanner, { backgroundColor: color.hex }]}>
+          <Text style={styles.bannerIcon}>🎨</Text>
+          <Text style={[styles.bannerText, { color: '#FFFFFF' }]}>Troque para {color.label}</Text>
         </View>
       )}
       {isFirst && round.isMagicRing && (
-        <View style={[styles.banner, { backgroundColor: pal.surface }]}>
-          <Text style={[styles.bannerText, { color: pal.fg }]}>🪄 Comece com o anel mágico</Text>
+        <View style={[styles.bigBanner, { backgroundColor: pal.primary }]}>
+          <Text style={styles.bannerIcon}>🪄</Text>
+          <Text style={[styles.bannerText, { color: pal.primaryText }]}>Comece com o anel mágico</Text>
         </View>
       )}
       {isFirst && !round.isMagicRing && !round.colorChanged && (
-        <View style={[styles.banner, { backgroundColor: pal.surface }]}>
-          <Text style={[styles.bannerText, { color: pal.fg }]}>📍 Ponha o marcador aqui</Text>
+        <View style={[styles.bigBanner, { backgroundColor: pal.accent }]}>
+          <Text style={styles.bannerIcon}>📍</Text>
+          <Text style={[styles.bannerText, { color: '#FFFFFF' }]}>Ponha o marcador AQUI</Text>
         </View>
       )}
 
@@ -308,7 +329,7 @@ function StitchView({
         strokeWidth={9}
       >
         <Text style={[styles.spiralBig, { color: pal.fg }]}>{step.producedAfter}</Text>
-        <Text style={[styles.spiralSmall, { color: pal.muted }]}>de {round.totalStitches} pts</Text>
+        <Text style={[styles.spiralTotal, { color: pal.muted }]}>de {round.totalStitches} pontos</Text>
       </SpiralProgress>
 
       <View style={[styles.stitchBadge, { borderColor: info.color }]}>
@@ -340,8 +361,9 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center', gap: 10 },
 
-  header: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.sm },
+  header: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg, paddingVertical: space.sm },
   icon: { fontSize: 22, fontWeight: '700' },
+  headerThumb: { width: 34, height: 34, borderRadius: 10 },
   headerCenter: { flex: 1, gap: 6 },
   recipeName: { fontSize: font.small, fontWeight: '700', textAlign: 'center' },
   progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
@@ -356,17 +378,23 @@ const styles = StyleSheet.create({
   pieceLabel: { fontSize: font.body, fontWeight: '800' },
   carreira: { fontSize: font.body, fontWeight: '700' },
 
-  banner: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.md },
-  colorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.md },
-  colorDot: { width: 18, height: 18, borderRadius: 9 },
-  bannerText: { fontSize: font.body, fontWeight: '700' },
+  bigBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 13,
+    borderRadius: radius.pill,
+  },
+  bannerIcon: { fontSize: 22 },
+  bannerText: { fontSize: 17, fontWeight: '800', letterSpacing: 0.3 },
 
   stitchBadge: { borderWidth: 3, borderRadius: radius.xl, paddingHorizontal: 30, paddingVertical: 18, alignItems: 'center', minWidth: 250 },
   stitchInstruction: { fontSize: 34, fontWeight: '900', letterSpacing: 0.5, textAlign: 'center' },
   stitchHint: { fontSize: font.body },
 
-  spiralBig: { fontSize: 52, fontWeight: '900' },
-  spiralSmall: { fontSize: font.small, marginTop: -4 },
+  spiralBig: { fontSize: 54, fontWeight: '900' },
+  spiralTotal: { fontSize: font.body, fontWeight: '800', marginTop: -2 },
   next: { fontSize: font.body, fontWeight: '600', marginTop: 6 },
 
   noteEmoji: { fontSize: 42 },

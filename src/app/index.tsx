@@ -38,9 +38,7 @@ export default function HomeScreen() {
     return recipes.filter((r) => {
       const okCat = category === 'todos' || r.category === category;
       const okQ =
-        !q ||
-        r.title.toLowerCase().includes(q) ||
-        r.tags.some((t) => t.toLowerCase().includes(q));
+        !q || r.title.toLowerCase().includes(q) || r.tags.some((t) => t.toLowerCase().includes(q));
       return okCat && okQ;
     });
   }, [recipes, query, category]);
@@ -53,7 +51,20 @@ export default function HomeScreen() {
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <View style={styles.worldSwitch}>
+        <View style={styles.topBar}>
+          <View>
+            <Text style={[styles.hello, { color: theme.textMuted }]}>Olá, artesã 👋</Text>
+            <Text style={[styles.hero, { color: theme.text }]}>Seu ateliê</Text>
+          </View>
+          <Pressable
+            onPress={() => router.push('/account')}
+            style={[styles.avatar, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          >
+            <Text style={styles.avatarText}>🧵</Text>
+          </Pressable>
+        </View>
+
+        <View style={[styles.worldSwitch, { backgroundColor: theme.surfaceAlt }]}>
           {WORLD_ORDER.map((w) => {
             const wt = WORLDS[w];
             const active = w === world;
@@ -61,16 +72,10 @@ export default function HomeScreen() {
               <Pressable
                 key={w}
                 onPress={() => setWorld(w)}
-                style={[
-                  styles.worldTab,
-                  {
-                    backgroundColor: active ? theme.primary : theme.surface,
-                    borderColor: active ? theme.primary : theme.border,
-                  },
-                ]}
+                style={[styles.worldTab, active && { backgroundColor: theme.surface }, active && shadow(1)]}
               >
                 <Text style={styles.worldEmoji}>{wt.emoji}</Text>
-                <Text style={[styles.worldTabText, { color: active ? theme.primaryText : theme.textMuted }]}>
+                <Text style={[styles.worldTabText, { color: active ? theme.text : theme.textMuted }]}>
                   {wt.label}
                 </Text>
               </Pressable>
@@ -82,26 +87,24 @@ export default function HomeScreen() {
           <TricoPlaceholder theme={theme} />
         ) : (
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-            <Text style={[styles.hello, { color: theme.textMuted }]}>Bom trabalho, artesã ✨</Text>
-            <Text style={[styles.hero, { color: theme.text }]}>Seu ateliê</Text>
-
             {activeProjects.length > 0 && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>Continue de onde parou</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.projectsRow}
-                >
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.projectsRow}>
                   {activeProjects.map((p) => (
-                    <ProjectCard key={p.recipeId} project={p} theme={theme} onPress={() => router.push({ pathname: '/guide/[id]', params: { id: p.recipeId } })} />
+                    <ProjectCard
+                      key={p.recipeId}
+                      project={p}
+                      theme={theme}
+                      onPress={() => router.push({ pathname: '/guide/[id]', params: { id: p.recipeId } })}
+                    />
                   ))}
                 </ScrollView>
               </View>
             )}
 
-            <View style={[styles.searchBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <Text style={{ color: theme.textMuted }}>🔍</Text>
+            <View style={[styles.searchBox, { backgroundColor: theme.surfaceAlt }]}>
+              <Text style={{ color: theme.textMuted, fontSize: 16 }}>🔍</Text>
               <TextInput
                 value={query}
                 onChangeText={setQuery}
@@ -111,11 +114,7 @@ export default function HomeScreen() {
               />
             </View>
 
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipsRow}
-            >
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
               {categories.map((c) => {
                 const active = c === category;
                 const label = c === 'todos' ? 'Todos' : CATEGORY_LABEL[c];
@@ -123,13 +122,7 @@ export default function HomeScreen() {
                   <Pressable
                     key={c}
                     onPress={() => setCategory(c)}
-                    style={[
-                      styles.chip,
-                      {
-                        backgroundColor: active ? theme.primary : theme.surface,
-                        borderColor: active ? theme.primary : theme.border,
-                      },
-                    ]}
+                    style={[styles.chip, { backgroundColor: active ? theme.primary : theme.surfaceAlt }]}
                   >
                     <Text style={[styles.chipText, { color: active ? theme.primaryText : theme.textMuted }]}>
                       {label}
@@ -139,9 +132,6 @@ export default function HomeScreen() {
               })}
             </ScrollView>
 
-            <Text style={[styles.sectionTitle, { color: theme.text, marginTop: space.sm }]}>
-              Biblioteca
-            </Text>
             {filtered.map((r) => (
               <RecipeCard key={r.id} recipe={r} theme={theme} />
             ))}
@@ -155,15 +145,7 @@ export default function HomeScreen() {
   );
 }
 
-function ProjectCard({
-  project,
-  theme,
-  onPress,
-}: {
-  project: ProjectState;
-  theme: WorldTheme;
-  onPress: () => void;
-}) {
+function ProjectCard({ project, theme, onPress }: { project: ProjectState; theme: WorldTheme; onPress: () => void }) {
   const recipe = getRecipe(project.recipeId);
   if (!recipe) return null;
   const pos = { pieceIdx: project.pieceIdx, roundIdx: project.roundIdx, stepIdx: project.stepIdx };
@@ -172,13 +154,9 @@ function ProjectCard({
   const img = recipeImage(recipe.cover);
 
   return (
-    <Pressable onPress={onPress} style={[styles.projectCard, { backgroundColor: theme.surface, borderColor: theme.border }, shadow(2)]}>
+    <Pressable onPress={onPress} style={[styles.projectCard, { backgroundColor: theme.surface }, shadow(2)]}>
       <View style={[styles.projectThumb, { backgroundColor: theme.surfaceAlt }]}>
-        {img ? (
-          <Image source={img} style={styles.projectImg} contentFit="cover" />
-        ) : (
-          <Text style={styles.projectEmoji}>{recipe.emoji}</Text>
-        )}
+        {img ? <Image source={img} style={styles.fill} contentFit="cover" /> : <Text style={styles.projectEmoji}>{recipe.emoji}</Text>}
       </View>
       <Text style={[styles.projectTitle, { color: theme.text }]} numberOfLines={1}>
         {recipe.title}
@@ -200,18 +178,10 @@ function RecipeCard({ recipe, theme }: { recipe: Recipe; theme: WorldTheme }) {
   return (
     <Pressable
       onPress={() => router.push({ pathname: '/recipe/[id]', params: { id: recipe.id } })}
-      style={({ pressed }) => [
-        styles.card,
-        { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.9 : 1 },
-        shadow(2),
-      ]}
+      style={({ pressed }) => [styles.card, { backgroundColor: theme.surface, opacity: pressed ? 0.92 : 1 }, shadow(2)]}
     >
       <View style={[styles.cardImgBox, { backgroundColor: theme.surfaceAlt }]}>
-        {img ? (
-          <Image source={img} style={styles.cardImg} contentFit="cover" />
-        ) : (
-          <Text style={styles.cardEmoji}>{recipe.emoji ?? '🧶'}</Text>
-        )}
+        {img ? <Image source={img} style={styles.fill} contentFit="cover" /> : <Text style={styles.cardEmoji}>{recipe.emoji ?? '🧶'}</Text>}
         {recipe.isPremium && (
           <View style={[styles.premiumTag, { backgroundColor: semantic.premium }]}>
             <Text style={[styles.premiumText, { color: semantic.premiumText }]}>★ Premium</Text>
@@ -243,7 +213,7 @@ function Meta({ text, theme }: { text: string; theme: WorldTheme }) {
 
 function TricoPlaceholder({ theme }: { theme: WorldTheme }) {
   return (
-    <View style={[styles.tricoWrap]}>
+    <View style={styles.tricoWrap}>
       <View style={[styles.tricoCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <Text style={styles.tricoEmoji}>🧷</Text>
         <Text style={[styles.tricoTitle, { color: theme.text }]}>Tricô vem aí</Text>
@@ -258,62 +228,49 @@ function TricoPlaceholder({ theme }: { theme: WorldTheme }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   safe: { flex: 1 },
-  worldSwitch: { flexDirection: 'row', gap: space.sm, paddingHorizontal: space.lg, paddingTop: space.sm },
-  worldTab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-  },
+  fill: { width: '100%', height: '100%' },
+
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: space.lg, paddingTop: space.sm },
+  hello: { fontSize: font.small, fontWeight: '600' },
+  hero: { fontSize: font.hero, fontWeight: '800' },
+  avatar: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 22 },
+
+  worldSwitch: { flexDirection: 'row', margin: space.lg, marginBottom: space.sm, padding: 4, borderRadius: radius.pill, gap: 4 },
+  worldTab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: radius.pill },
   worldEmoji: { fontSize: 16 },
   worldTabText: { fontSize: font.body, fontWeight: '700' },
 
-  scroll: { padding: space.lg, paddingBottom: 48, gap: space.md },
-  hello: { fontSize: font.small, fontWeight: '600', marginTop: space.sm },
-  hero: { fontSize: font.hero, fontWeight: '800', marginBottom: space.xs },
+  scroll: { paddingHorizontal: space.lg, paddingBottom: 48, gap: space.lg },
 
   section: { gap: space.sm },
   sectionTitle: { fontSize: font.h2, fontWeight: '800' },
 
   projectsRow: { gap: space.md, paddingVertical: space.xs, paddingRight: space.lg },
-  projectCard: { width: 190, borderRadius: radius.lg, borderWidth: 1, padding: space.md, gap: 6 },
-  projectThumb: { height: 90, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  projectImg: { width: '100%', height: '100%' },
+  projectCard: { width: 190, borderRadius: radius.lg, padding: space.md, gap: 6 },
+  projectThumb: { height: 96, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   projectEmoji: { fontSize: 40 },
   projectTitle: { fontSize: font.body, fontWeight: '800', marginTop: 4 },
   projectDesc: { fontSize: font.tiny },
   projectPct: { fontSize: font.tiny, fontWeight: '800', alignSelf: 'flex-end' },
 
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    paddingHorizontal: space.md,
-    height: 46,
-    borderRadius: radius.md,
-    borderWidth: 1,
-  },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.md, height: 48, borderRadius: radius.pill },
   searchInput: { flex: 1, fontSize: font.body },
 
-  chipsRow: { gap: space.sm, paddingVertical: space.xs, paddingRight: space.lg },
-  chip: { paddingHorizontal: space.md, paddingVertical: 8, borderRadius: radius.pill, borderWidth: 1.5 },
+  chipsRow: { gap: space.sm, paddingVertical: 2, paddingRight: space.lg },
+  chip: { paddingHorizontal: space.md, paddingVertical: 9, borderRadius: radius.pill },
   chipText: { fontSize: font.small, fontWeight: '700' },
 
-  card: { flexDirection: 'row', gap: space.md, padding: space.md, borderRadius: radius.lg, borderWidth: 1, alignItems: 'center' },
-  cardImgBox: { width: 84, height: 84, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  cardImg: { width: '100%', height: '100%' },
-  cardEmoji: { fontSize: 38 },
-  premiumTag: { position: 'absolute', top: 4, left: 4, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  premiumText: { fontSize: 9, fontWeight: '800' },
-  cardBody: { flex: 1, gap: 3 },
-  cardTitle: { fontSize: font.h2, fontWeight: '800' },
+  card: { borderRadius: radius.xl, overflow: 'hidden' },
+  cardImgBox: { width: '100%', aspectRatio: 1.6, alignItems: 'center', justifyContent: 'center' },
+  cardEmoji: { fontSize: 64 },
+  premiumTag: { position: 'absolute', top: space.md, left: space.md, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.sm },
+  premiumText: { fontSize: font.tiny, fontWeight: '800' },
+  cardBody: { padding: space.lg, gap: 4 },
+  cardTitle: { fontSize: font.title, fontWeight: '800' },
   cardSub: { fontSize: font.small },
-  metaRow: { flexDirection: 'row', gap: 6, marginTop: 4, flexWrap: 'wrap' },
-  meta: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm },
+  metaRow: { flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' },
+  meta: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.sm },
   metaText: { fontSize: font.tiny, fontWeight: '700' },
 
   progressTrack: { height: 7, borderRadius: 4, overflow: 'hidden', marginTop: 4 },
