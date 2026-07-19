@@ -37,6 +37,7 @@ export const semantic = {
 export function shadow(elevation = 3): ViewStyle {
   return Platform.select<ViewStyle>({
     android: { elevation },
+    web: { boxShadow: `0px ${elevation}px ${elevation * 2}px rgba(58,42,36,0.12)` } as ViewStyle,
     default: {
       shadowColor: '#3A2A24',
       shadowOpacity: 0.12,
