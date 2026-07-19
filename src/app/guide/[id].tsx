@@ -1,20 +1,26 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getRecipe } from '@/data/recipes';
 import { STITCH_HINT, STITCHES } from '@/data/stitches';
-import { buildGuide, countCarreiras } from '@/engine/guide';
+import { countCarreiras, type GuideRound } from '@/engine/guide';
+import { buildInstances, pieceInstanceLabel, progressFraction, type PieceInstance } from '@/engine/project';
+import { getProject, saveProject } from '@/state/projects';
 import { useWorld } from '@/theme/world-context';
+import { font, radius, space } from '@/theme/tokens';
+import type { RecipeColor } from '@/types/recipe';
 
-interface Progress {
-  roundIdx: number;
-  stepIdx: number;
-  finished: boolean;
+interface Palette {
+  bg: string;
+  surface: string;
+  fg: string;
+  muted: string;
+  primary: string;
+  primaryText: string;
 }
 
 export default function GuideScreen() {
@@ -24,54 +30,78 @@ export default function GuideScreen() {
   const { theme } = useWorld();
   const recipe = getRecipe(id);
 
-  const guide = useMemo(() => (recipe ? buildGuide(recipe) : []), [recipe]);
-  const totalCarreiras = useMemo(() => countCarreiras(guide), [guide]);
+  const instances = useMemo(() => (recipe ? buildInstances(recipe) : []), [recipe]);
+  const colorMap = useMemo(() => {
+    const m: Record<string, RecipeColor> = {};
+    recipe?.colors?.forEach((c) => (m[c.id] = c));
+    return m;
+  }, [recipe]);
 
+  const [pieceIdx, setPieceIdx] = useState(0);
   const [roundIdx, setRoundIdx] = useState(0);
   const [stepIdx, setStepIdx] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [dark, setDark] = useState(false);
   const loaded = useRef(false);
 
-  const storageKey = `amg:progress:${id}`;
-
   useEffect(() => {
-    AsyncStorage.getItem(storageKey)
-      .then((raw) => {
-        if (raw) {
-          const p = JSON.parse(raw) as Progress;
-          if (p.roundIdx < guide.length) {
-            setRoundIdx(p.roundIdx);
-            setStepIdx(p.stepIdx);
-            setFinished(p.finished);
-          }
+    getProject(id!)
+      .then((p) => {
+        if (p && p.pieceIdx < instances.length) {
+          setPieceIdx(p.pieceIdx);
+          setRoundIdx(p.roundIdx);
+          setStepIdx(p.stepIdx);
+          setFinished(p.finished);
         }
       })
       .finally(() => {
         loaded.current = true;
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storageKey, guide.length]);
+  }, [id, instances.length]);
 
   useEffect(() => {
-    if (!loaded.current) return;
-    void AsyncStorage.setItem(storageKey, JSON.stringify({ roundIdx, stepIdx, finished }));
-  }, [roundIdx, stepIdx, finished, storageKey]);
+    if (!loaded.current || !recipe) return;
+    void saveProject({ recipeId: recipe.id, pieceIdx, roundIdx, stepIdx, finished });
+  }, [recipe, pieceIdx, roundIdx, stepIdx, finished]);
 
-  if (!recipe || guide.length === 0) {
+  const pal: Palette = dark
+    ? { bg: '#141210', surface: '#242019', fg: '#F5F1EC', muted: '#9A938E', primary: theme.primary, primaryText: theme.primaryText }
+    : { bg: theme.bg, surface: theme.surface, fg: theme.text, muted: theme.textMuted, primary: theme.primary, primaryText: theme.primaryText };
+
+  if (!recipe || instances.length === 0) {
     return (
-      <View style={[styles.root, styles.center, { backgroundColor: theme.bg }]}>
-        <Text style={{ color: theme.text }}>Receita não encontrada.</Text>
+      <View style={[styles.root, styles.center, { backgroundColor: pal.bg }]}>
+        <Text style={{ color: pal.fg }}>Receita não encontrada.</Text>
       </View>
     );
   }
 
+  const instance = instances[pieceIdx];
+  const guide = instance.guide;
   const round = guide[roundIdx];
+  const totalCarreiras = countCarreiras(guide);
+  const pct = Math.round(progressFraction(recipe, { pieceIdx, roundIdx, stepIdx }, finished) * 100);
+
+  const goNextRound = () => {
+    if (roundIdx + 1 < guide.length) {
+      setRoundIdx(roundIdx + 1);
+      setStepIdx(0);
+    } else if (pieceIdx + 1 < instances.length) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setPieceIdx(pieceIdx + 1);
+      setRoundIdx(0);
+      setStepIdx(0);
+    } else {
+      setFinished(true);
+    }
+  };
 
   const advance = () => {
     if (finished) return;
     if (round.kind === 'note') {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      goNext();
+      goNextRound();
       return;
     }
     const steps = round.steps!;
@@ -80,14 +110,8 @@ export default function GuideScreen() {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } else {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      if (roundIdx + 1 >= guide.length) setFinished(true);
-      else goNext();
+      goNextRound();
     }
-  };
-
-  const goNext = () => {
-    setRoundIdx(roundIdx + 1);
-    setStepIdx(0);
   };
 
   const back = () => {
@@ -103,10 +127,24 @@ export default function GuideScreen() {
       const prev = guide[roundIdx - 1];
       setRoundIdx(roundIdx - 1);
       setStepIdx(prev.kind === 'stitches' ? prev.steps!.length - 1 : 0);
+    } else if (pieceIdx > 0) {
+      const prevInst = instances[pieceIdx - 1];
+      const lastRound = prevInst.guide[prevInst.guide.length - 1];
+      setPieceIdx(pieceIdx - 1);
+      setRoundIdx(prevInst.guide.length - 1);
+      setStepIdx(lastRound.kind === 'stitches' ? lastRound.steps!.length - 1 : 0);
     }
   };
 
+  const selectPiece = (idx: number) => {
+    setPieceIdx(idx);
+    setRoundIdx(0);
+    setStepIdx(0);
+    setFinished(false);
+  };
+
   const reset = () => {
+    setPieceIdx(0);
     setRoundIdx(0);
     setStepIdx(0);
     setFinished(false);
@@ -114,16 +152,16 @@ export default function GuideScreen() {
 
   if (finished) {
     return (
-      <View style={[styles.root, { backgroundColor: theme.bg }]}>
+      <View style={[styles.root, { backgroundColor: pal.bg }]}>
         <SafeAreaView style={[styles.safe, styles.center]}>
           <Text style={styles.doneEmoji}>🎉</Text>
-          <Text style={[styles.doneTitle, { color: theme.text }]}>Peça concluída!</Text>
-          <Text style={[styles.doneText, { color: theme.textMuted }]}>{recipe.title}</Text>
-          <Pressable style={[styles.btn, { backgroundColor: theme.primary }]} onPress={reset}>
-            <Text style={[styles.btnText, { color: theme.primaryText }]}>Recomeçar</Text>
+          <Text style={[styles.doneTitle, { color: pal.fg }]}>Peça concluída!</Text>
+          <Text style={[styles.doneText, { color: pal.muted }]}>{recipe.title}</Text>
+          <Pressable style={[styles.btn, { backgroundColor: pal.primary }]} onPress={reset}>
+            <Text style={[styles.btnText, { color: pal.primaryText }]}>Recomeçar</Text>
           </Pressable>
           <Pressable style={styles.linkBtn} onPress={() => router.back()}>
-            <Text style={[styles.linkText, { color: theme.primary }]}>Voltar à receita</Text>
+            <Text style={[styles.linkText, { color: pal.primary }]}>Voltar à receita</Text>
           </Pressable>
         </SafeAreaView>
       </View>
@@ -131,58 +169,73 @@ export default function GuideScreen() {
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.bg }]}>
+    <View style={[styles.root, { backgroundColor: pal.bg }]}>
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
-        {/* topo: sair + progresso de carreiras */}
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} hitSlop={12}>
-            <Text style={[styles.exit, { color: theme.textMuted }]}>✕</Text>
+            <Text style={[styles.icon, { color: pal.muted }]}>✕</Text>
           </Pressable>
           <View style={styles.headerCenter}>
-            <Text style={[styles.recipeName, { color: theme.textMuted }]} numberOfLines={1}>
-              {recipe.title}
+            <Text style={[styles.recipeName, { color: pal.muted }]} numberOfLines={1}>
+              {recipe.title} · {pct}%
             </Text>
-            <View style={[styles.progressTrack, { backgroundColor: theme.surfaceAlt }]}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    backgroundColor: theme.primary,
-                    width: `${((round.number ?? 0) / totalCarreiras) * 100}%`,
-                  },
-                ]}
-              />
+            <View style={[styles.progressTrack, { backgroundColor: pal.surface }]}>
+              <View style={[styles.progressFill, { backgroundColor: pal.primary, width: `${pct}%` }]} />
             </View>
           </View>
-          <Pressable onPress={reset} hitSlop={12}>
-            <Text style={[styles.exit, { color: theme.textMuted }]}>↺</Text>
+          <Pressable onPress={() => setDark((d) => !d)} hitSlop={10}>
+            <Text style={[styles.icon, { color: pal.muted }]}>{dark ? '☀' : '☾'}</Text>
+          </Pressable>
+          <Pressable onPress={reset} hitSlop={10}>
+            <Text style={[styles.icon, { color: pal.muted }]}>↺</Text>
           </Pressable>
         </View>
 
-        {/* área de toque gigante */}
+        {instances.length > 1 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.pieces}
+          >
+            {instances.map((inst, i) => {
+              const active = i === pieceIdx;
+              return (
+                <Pressable
+                  key={inst.key}
+                  onPress={() => selectPiece(i)}
+                  style={[
+                    styles.pieceChip,
+                    { backgroundColor: active ? pal.primary : pal.surface },
+                  ]}
+                >
+                  <Text style={[styles.pieceChipText, { color: active ? pal.primaryText : pal.muted }]}>
+                    {pieceInstanceLabel(inst)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
+
         <Pressable style={styles.tapArea} onPress={advance}>
           {round.kind === 'note' ? (
-            <NoteView theme={theme} label={round.label} text={round.text!} />
+            <NoteView pal={pal} label={round.label} text={round.text!} />
           ) : (
             <StitchView
-              theme={theme}
+              pal={pal}
               round={round}
               stepIdx={stepIdx}
               totalCarreiras={totalCarreiras}
+              pieceLabel={pieceInstanceLabel(instance)}
+              colorMap={colorMap}
             />
           )}
-          <Text style={[styles.tapHint, { color: theme.textMuted }]}>
-            toque em qualquer lugar para avançar
-          </Text>
+          <Text style={[styles.tapHint, { color: pal.muted }]}>toque para avançar</Text>
         </Pressable>
 
-        {/* voltar */}
         <View style={styles.footer}>
-          <Pressable
-            style={[styles.backBtn, { borderColor: theme.border, backgroundColor: theme.surface }]}
-            onPress={back}
-          >
-            <Text style={[styles.backText, { color: theme.text }]}>‹ Voltar 1 ponto</Text>
+          <Pressable style={[styles.backBtn, { backgroundColor: pal.surface }]} onPress={back}>
+            <Text style={[styles.backText, { color: pal.fg }]}>‹ Voltar 1 ponto</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -191,15 +244,19 @@ export default function GuideScreen() {
 }
 
 function StitchView({
-  theme,
+  pal,
   round,
   stepIdx,
   totalCarreiras,
+  pieceLabel,
+  colorMap,
 }: {
-  theme: ReturnType<typeof useWorld>['theme'];
-  round: ReturnType<typeof buildGuide>[number];
+  pal: Palette;
+  round: GuideRound;
   stepIdx: number;
   totalCarreiras: number;
+  pieceLabel: string;
+  colorMap: Record<string, RecipeColor>;
 }) {
   const steps = round.steps!;
   const step = steps[stepIdx];
@@ -207,78 +264,66 @@ function StitchView({
   const hint = STITCH_HINT[step.stitch];
   const next = stepIdx + 1 < steps.length ? STITCHES[steps[stepIdx + 1].stitch] : null;
   const isFirst = stepIdx === 0;
+  const color = round.color ? colorMap[round.color] : undefined;
 
   return (
     <>
-      <Text style={[styles.carreira, { color: theme.textMuted }]}>
+      <Text style={[styles.pieceLabel, { color: pal.primary }]}>{pieceLabel}</Text>
+      <Text style={[styles.carreira, { color: pal.muted }]}>
         Carreira {round.number} de {totalCarreiras}
       </Text>
 
-      {round.isMagicRing && isFirst && (
-        <View style={[styles.banner, { backgroundColor: theme.surfaceAlt }]}>
-          <Text style={[styles.bannerText, { color: theme.text }]}>🪄 Comece com o anel mágico</Text>
+      {isFirst && round.colorChanged && color && (
+        <View style={[styles.colorBanner, { backgroundColor: pal.surface }]}>
+          <View style={[styles.colorDot, { backgroundColor: color.hex }]} />
+          <Text style={[styles.bannerText, { color: pal.fg }]}>Troque para {color.label}</Text>
         </View>
       )}
-      {isFirst && !round.isMagicRing && (
-        <View style={[styles.banner, { backgroundColor: theme.surfaceAlt }]}>
-          <Text style={[styles.bannerText, { color: theme.text }]}>📍 Ponha o marcador aqui</Text>
+      {isFirst && round.isMagicRing && (
+        <View style={[styles.banner, { backgroundColor: pal.surface }]}>
+          <Text style={[styles.bannerText, { color: pal.fg }]}>🪄 Comece com o anel mágico</Text>
+        </View>
+      )}
+      {isFirst && !round.isMagicRing && !round.colorChanged && (
+        <View style={[styles.banner, { backgroundColor: pal.surface }]}>
+          <Text style={[styles.bannerText, { color: pal.fg }]}>📍 Ponha o marcador aqui</Text>
         </View>
       )}
 
       <View style={[styles.stitchBadge, { borderColor: info.color }]}>
         <Text style={[styles.stitchInstruction, { color: info.color }]}>{info.instruction}</Text>
       </View>
-      {!!hint && <Text style={[styles.stitchHint, { color: theme.textMuted }]}>{hint}</Text>}
-      {!!step.groupNote && (
-        <Text style={[styles.stitchHint, { color: theme.textMuted }]}>({step.groupNote})</Text>
-      )}
+      {!!hint && <Text style={[styles.stitchHint, { color: pal.muted }]}>{hint}</Text>}
+      {!!step.groupNote && <Text style={[styles.stitchHint, { color: pal.muted }]}>({step.groupNote})</Text>}
 
       <View style={styles.counters}>
-        <Counter theme={theme} big value={`${step.producedAfter}`} label={`de ${round.totalStitches} pontos`} />
-        <Counter theme={theme} value={`${stepIdx + 1}/${steps.length}`} label="pontos da carreira" />
+        <Counter pal={pal} big value={`${step.producedAfter}`} label={`de ${round.totalStitches} pontos`} />
+        <Counter pal={pal} value={`${stepIdx + 1}/${steps.length}`} label="pontos da carreira" />
       </View>
 
-      <Text style={[styles.next, { color: theme.textMuted }]}>
+      <Text style={[styles.next, { color: pal.muted }]}>
         {next ? `Próximo: ${next.label}` : '✓ Fim da carreira'}
       </Text>
     </>
   );
 }
 
-function NoteView({
-  theme,
-  label,
-  text,
-}: {
-  theme: ReturnType<typeof useWorld>['theme'];
-  label?: string;
-  text: string;
-}) {
+function NoteView({ pal, label, text }: { pal: Palette; label?: string; text: string }) {
   return (
     <>
-      <Text style={[styles.carreira, { color: theme.textMuted }]}>{label ?? 'Instrução'}</Text>
+      <Text style={[styles.carreira, { color: pal.muted }]}>{label ?? 'Instrução'}</Text>
       <Text style={styles.noteEmoji}>📝</Text>
-      <Text style={[styles.noteText, { color: theme.text }]}>{text}</Text>
-      <Text style={[styles.next, { color: theme.textMuted }]}>toque para continuar ›</Text>
+      <Text style={[styles.noteText, { color: pal.fg }]}>{text}</Text>
+      <Text style={[styles.next, { color: pal.muted }]}>toque para continuar ›</Text>
     </>
   );
 }
 
-function Counter({
-  theme,
-  value,
-  label,
-  big,
-}: {
-  theme: ReturnType<typeof useWorld>['theme'];
-  value: string;
-  label: string;
-  big?: boolean;
-}) {
+function Counter({ pal, value, label, big }: { pal: Palette; value: string; label: string; big?: boolean }) {
   return (
     <View style={styles.counter}>
-      <Text style={[big ? styles.counterBig : styles.counterVal, { color: theme.text }]}>{value}</Text>
-      <Text style={[styles.counterLabel, { color: theme.textMuted }]}>{label}</Text>
+      <Text style={[big ? styles.counterBig : styles.counterVal, { color: pal.fg }]}>{value}</Text>
+      <Text style={[styles.counterLabel, { color: pal.muted }]}>{label}</Text>
     </View>
   );
 }
@@ -287,55 +332,51 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   safe: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center', gap: 10 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  exit: { fontSize: 22, fontWeight: '700' },
+
+  header: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.sm },
+  icon: { fontSize: 22, fontWeight: '700' },
   headerCenter: { flex: 1, gap: 6 },
-  recipeName: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  recipeName: { fontSize: font.small, fontWeight: '700', textAlign: 'center' },
   progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 3 },
 
-  tapArea: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 24 },
-  tapHint: { position: 'absolute', bottom: 12, fontSize: 12 },
-  carreira: { fontSize: 16, fontWeight: '700' },
-  banner: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 },
-  bannerText: { fontSize: 14, fontWeight: '600' },
+  pieces: { gap: space.sm, paddingHorizontal: space.lg, paddingBottom: space.sm },
+  pieceChip: { paddingHorizontal: space.md, paddingVertical: 8, borderRadius: radius.pill },
+  pieceChipText: { fontSize: font.small, fontWeight: '700' },
 
-  stitchBadge: {
-    borderWidth: 3,
-    borderRadius: 24,
-    paddingHorizontal: 28,
-    paddingVertical: 22,
-    alignItems: 'center',
-    minWidth: 240,
-  },
-  stitchInstruction: { fontSize: 34, fontWeight: '900', letterSpacing: 0.5, textAlign: 'center' },
-  stitchHint: { fontSize: 15 },
+  tapArea: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: space.xl },
+  tapHint: { position: 'absolute', bottom: 10, fontSize: font.tiny },
+  pieceLabel: { fontSize: font.body, fontWeight: '800' },
+  carreira: { fontSize: font.body, fontWeight: '700' },
 
-  counters: { flexDirection: 'row', gap: 28, marginTop: 8 },
+  banner: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.md },
+  colorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.md },
+  colorDot: { width: 18, height: 18, borderRadius: 9 },
+  bannerText: { fontSize: font.body, fontWeight: '700' },
+
+  stitchBadge: { borderWidth: 3, borderRadius: radius.xl, paddingHorizontal: 30, paddingVertical: 24, alignItems: 'center', minWidth: 250 },
+  stitchInstruction: { fontSize: 36, fontWeight: '900', letterSpacing: 0.5, textAlign: 'center' },
+  stitchHint: { fontSize: font.body },
+
+  counters: { flexDirection: 'row', gap: 32, marginTop: space.sm },
   counter: { alignItems: 'center' },
-  counterBig: { fontSize: 44, fontWeight: '900' },
+  counterBig: { fontSize: 46, fontWeight: '900' },
   counterVal: { fontSize: 30, fontWeight: '800' },
-  counterLabel: { fontSize: 12, marginTop: 2 },
-  next: { fontSize: 15, fontWeight: '600', marginTop: 6 },
+  counterLabel: { fontSize: font.tiny, marginTop: 2 },
+  next: { fontSize: font.body, fontWeight: '600', marginTop: 6 },
 
-  noteEmoji: { fontSize: 40 },
+  noteEmoji: { fontSize: 42 },
   noteText: { fontSize: 20, fontWeight: '600', textAlign: 'center', lineHeight: 28 },
 
-  footer: { paddingHorizontal: 16, paddingBottom: 8, paddingTop: 4 },
-  backBtn: { paddingVertical: 14, borderRadius: 14, borderWidth: 1, alignItems: 'center' },
-  backText: { fontSize: 16, fontWeight: '700' },
+  footer: { paddingHorizontal: space.lg, paddingBottom: space.sm, paddingTop: space.xs },
+  backBtn: { paddingVertical: 14, borderRadius: radius.md, alignItems: 'center' },
+  backText: { fontSize: font.h2, fontWeight: '700' },
 
   doneEmoji: { fontSize: 64 },
-  doneTitle: { fontSize: 26, fontWeight: '900' },
-  doneText: { fontSize: 16 },
-  btn: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14, marginTop: 16 },
-  btnText: { fontSize: 17, fontWeight: '800' },
+  doneTitle: { fontSize: font.hero, fontWeight: '900' },
+  doneText: { fontSize: font.body },
+  btn: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: radius.md, marginTop: space.lg },
+  btnText: { fontSize: font.h2, fontWeight: '800' },
   linkBtn: { padding: 10 },
-  linkText: { fontSize: 15, fontWeight: '600' },
+  linkText: { fontSize: font.body, fontWeight: '600' },
 });

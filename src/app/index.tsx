@@ -1,21 +1,54 @@
-import { Link } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { Link, useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getRecipesByWorld } from '@/data/recipes';
+import { getRecipe, getRecipesByWorld } from '@/data/recipes';
+import { recipeImage } from '@/data/recipe-images';
+import { describePosition, progressFraction } from '@/engine/project';
+import { listProjects, type ProjectState } from '@/state/projects';
 import { useWorld } from '@/theme/world-context';
-import { WORLD_ORDER, WORLDS } from '@/theme/worlds';
-import type { Difficulty, Recipe } from '@/types/recipe';
-
-const DIFFICULTY_LABEL: Record<Difficulty, string> = {
-  iniciante: 'Iniciante',
-  intermediario: 'Intermediário',
-  avancado: 'Avançado',
-};
+import { WORLD_ORDER, WORLDS, type WorldTheme } from '@/theme/worlds';
+import { CATEGORY_LABEL, DIFFICULTY_LABEL, font, radius, semantic, shadow, space } from '@/theme/tokens';
+import type { Category, Recipe } from '@/types/recipe';
 
 export default function HomeScreen() {
   const { world, theme, setWorld } = useWorld();
+  const router = useRouter();
   const recipes = getRecipesByWorld(world);
+
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<Category | 'todos'>('todos');
+  const [projects, setProjects] = useState<ProjectState[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      listProjects().then(setProjects);
+    }, []),
+  );
+
+  const categories = useMemo(() => {
+    const set = new Set(recipes.map((r) => r.category));
+    return ['todos', ...Array.from(set)] as (Category | 'todos')[];
+  }, [recipes]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return recipes.filter((r) => {
+      const okCat = category === 'todos' || r.category === category;
+      const okQ =
+        !q ||
+        r.title.toLowerCase().includes(q) ||
+        r.tags.some((t) => t.toLowerCase().includes(q));
+      return okCat && okQ;
+    });
+  }, [recipes, query, category]);
+
+  const activeProjects = useMemo(
+    () => projects.filter((p) => !p.finished && getRecipe(p.recipeId)?.world === world),
+    [projects, world],
+  );
 
   return (
     <View style={[styles.root, { backgroundColor: theme.bg }]}>
@@ -37,9 +70,7 @@ export default function HomeScreen() {
                 ]}
               >
                 <Text style={styles.worldEmoji}>{wt.emoji}</Text>
-                <Text
-                  style={[styles.worldTabText, { color: active ? theme.primaryText : theme.textMuted }]}
-                >
+                <Text style={[styles.worldTabText, { color: active ? theme.primaryText : theme.textMuted }]}>
                   {wt.label}
                 </Text>
               </Pressable>
@@ -47,54 +78,154 @@ export default function HomeScreen() {
           })}
         </View>
 
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <Text style={[styles.hero, { color: theme.text }]}>
-            {theme.emoji} Mundo {theme.label}
-          </Text>
-          <Text style={[styles.tagline, { color: theme.textMuted }]}>{theme.tagline}</Text>
+        {world === 'trico' ? (
+          <TricoPlaceholder theme={theme} />
+        ) : (
+          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+            <Text style={[styles.hello, { color: theme.textMuted }]}>Bom trabalho, artesã ✨</Text>
+            <Text style={[styles.hero, { color: theme.text }]}>Seu ateliê</Text>
 
-          {world === 'trico' ? (
-            <View style={[styles.empty, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <Text style={styles.emptyEmoji}>🧷</Text>
-              <Text style={[styles.emptyTitle, { color: theme.text }]}>Tricô vem aí</Text>
-              <Text style={[styles.emptyText, { color: theme.textMuted }]}>
-                Esse mundo ainda está em construção. Volte pro Amigurumi pra testar o guia.
-              </Text>
+            {activeProjects.length > 0 && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Continue de onde parou</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.projectsRow}
+                >
+                  {activeProjects.map((p) => (
+                    <ProjectCard key={p.recipeId} project={p} theme={theme} onPress={() => router.push({ pathname: '/guide/[id]', params: { id: p.recipeId } })} />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            <View style={[styles.searchBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <Text style={{ color: theme.textMuted }}>🔍</Text>
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Buscar receita ou tag"
+                placeholderTextColor={theme.textMuted}
+                style={[styles.searchInput, { color: theme.text }]}
+              />
             </View>
-          ) : (
-            recipes.map((r) => <RecipeCard key={r.id} recipe={r} />)
-          )}
-        </ScrollView>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipsRow}
+            >
+              {categories.map((c) => {
+                const active = c === category;
+                const label = c === 'todos' ? 'Todos' : CATEGORY_LABEL[c];
+                return (
+                  <Pressable
+                    key={c}
+                    onPress={() => setCategory(c)}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: active ? theme.primary : theme.surface,
+                        borderColor: active ? theme.primary : theme.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.chipText, { color: active ? theme.primaryText : theme.textMuted }]}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            <Text style={[styles.sectionTitle, { color: theme.text, marginTop: space.sm }]}>
+              Biblioteca
+            </Text>
+            {filtered.map((r) => (
+              <RecipeCard key={r.id} recipe={r} theme={theme} />
+            ))}
+            {filtered.length === 0 && (
+              <Text style={[styles.empty, { color: theme.textMuted }]}>Nada encontrado.</Text>
+            )}
+          </ScrollView>
+        )}
       </SafeAreaView>
     </View>
   );
 }
 
-function RecipeCard({ recipe }: { recipe: Recipe }) {
-  const { theme } = useWorld();
+function ProjectCard({
+  project,
+  theme,
+  onPress,
+}: {
+  project: ProjectState;
+  theme: WorldTheme;
+  onPress: () => void;
+}) {
+  const recipe = getRecipe(project.recipeId);
+  if (!recipe) return null;
+  const pos = { pieceIdx: project.pieceIdx, roundIdx: project.roundIdx, stepIdx: project.stepIdx };
+  const pct = Math.round(progressFraction(recipe, pos, project.finished) * 100);
+  const desc = describePosition(recipe, pos, project.finished);
+  const img = recipeImage(recipe.cover);
+
+  return (
+    <Pressable onPress={onPress} style={[styles.projectCard, { backgroundColor: theme.surface, borderColor: theme.border }, shadow(2)]}>
+      <View style={[styles.projectThumb, { backgroundColor: theme.surfaceAlt }]}>
+        {img ? (
+          <Image source={img} style={styles.projectImg} contentFit="cover" />
+        ) : (
+          <Text style={styles.projectEmoji}>{recipe.emoji}</Text>
+        )}
+      </View>
+      <Text style={[styles.projectTitle, { color: theme.text }]} numberOfLines={1}>
+        {recipe.title}
+      </Text>
+      <Text style={[styles.projectDesc, { color: theme.textMuted }]} numberOfLines={1}>
+        {desc}
+      </Text>
+      <View style={[styles.progressTrack, { backgroundColor: theme.surfaceAlt }]}>
+        <View style={[styles.progressFill, { backgroundColor: theme.primary, width: `${pct}%` }]} />
+      </View>
+      <Text style={[styles.projectPct, { color: theme.primary }]}>{pct}%</Text>
+    </Pressable>
+  );
+}
+
+function RecipeCard({ recipe, theme }: { recipe: Recipe; theme: WorldTheme }) {
+  const img = recipeImage(recipe.cover);
   return (
     <Link href={{ pathname: '/recipe/[id]', params: { id: recipe.id } }} asChild>
       <Pressable
         style={({ pressed }) => [
           styles.card,
-          { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.85 : 1 },
+          { backgroundColor: theme.surface, borderColor: theme.border, opacity: pressed ? 0.9 : 1 },
+          shadow(2),
         ]}
       >
-        <View style={[styles.cardEmojiBox, { backgroundColor: theme.surfaceAlt }]}>
-          <Text style={styles.cardEmoji}>{recipe.emoji ?? '🧶'}</Text>
+        <View style={[styles.cardImgBox, { backgroundColor: theme.surfaceAlt }]}>
+          {img ? (
+            <Image source={img} style={styles.cardImg} contentFit="cover" />
+          ) : (
+            <Text style={styles.cardEmoji}>{recipe.emoji ?? '🧶'}</Text>
+          )}
+          {recipe.isPremium && (
+            <View style={[styles.premiumTag, { backgroundColor: semantic.premium }]}>
+              <Text style={[styles.premiumText, { color: semantic.premiumText }]}>★ Premium</Text>
+            </View>
+          )}
         </View>
         <View style={styles.cardBody}>
           <Text style={[styles.cardTitle, { color: theme.text }]}>{recipe.title}</Text>
-          <Text style={[styles.cardMeta, { color: theme.textMuted }]} numberOfLines={2}>
-            {recipe.description}
+          <Text style={[styles.cardSub, { color: theme.textMuted }]} numberOfLines={1}>
+            {recipe.subtitle ?? recipe.description}
           </Text>
-          <View style={styles.badgeRow}>
-            <Badge label={DIFFICULTY_LABEL[recipe.difficulty]} bg={theme.surfaceAlt} color={theme.textMuted} />
-            {recipe.isPremium ? (
-              <Badge label="★ Premium" bg={theme.accent} color="#3A2A24" />
-            ) : (
-              <Badge label="Grátis" bg="#16A34A" color="#FFFFFF" />
-            )}
+          <View style={styles.metaRow}>
+            <Meta text={DIFFICULTY_LABEL[recipe.difficulty]} theme={theme} />
+            {!!recipe.estimatedHours && <Meta text={`⏱ ${recipe.estimatedHours}h`} theme={theme} />}
+            <Meta text={`${recipe.pieces.length} peça${recipe.pieces.length > 1 ? 's' : ''}`} theme={theme} />
           </View>
         </View>
       </Pressable>
@@ -102,10 +233,24 @@ function RecipeCard({ recipe }: { recipe: Recipe }) {
   );
 }
 
-function Badge({ label, bg, color }: { label: string; bg: string; color: string }) {
+function Meta({ text, theme }: { text: string; theme: WorldTheme }) {
   return (
-    <View style={[styles.badge, { backgroundColor: bg }]}>
-      <Text style={[styles.badgeText, { color }]}>{label}</Text>
+    <View style={[styles.meta, { backgroundColor: theme.surfaceAlt }]}>
+      <Text style={[styles.metaText, { color: theme.textMuted }]}>{text}</Text>
+    </View>
+  );
+}
+
+function TricoPlaceholder({ theme }: { theme: WorldTheme }) {
+  return (
+    <View style={[styles.tricoWrap]}>
+      <View style={[styles.tricoCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Text style={styles.tricoEmoji}>🧷</Text>
+        <Text style={[styles.tricoTitle, { color: theme.text }]}>Tricô vem aí</Text>
+        <Text style={[styles.tricoText, { color: theme.textMuted }]}>
+          Esse mundo está em construção. Volte pro Amigurumi pra testar o guia.
+        </Text>
+      </View>
     </View>
   );
 }
@@ -113,13 +258,7 @@ function Badge({ label, bg, color }: { label: string; bg: string; color: string 
 const styles = StyleSheet.create({
   root: { flex: 1 },
   safe: { flex: 1 },
-  worldSwitch: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
-  },
+  worldSwitch: { flexDirection: 'row', gap: space.sm, paddingHorizontal: space.lg, paddingTop: space.sm },
   worldTab: {
     flex: 1,
     flexDirection: 'row',
@@ -127,45 +266,64 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
-    borderRadius: 14,
+    borderRadius: radius.md,
     borderWidth: 1.5,
   },
   worldEmoji: { fontSize: 16 },
-  worldTabText: { fontSize: 15, fontWeight: '700' },
-  scroll: { padding: 16, paddingBottom: 40, gap: 12 },
-  hero: { fontSize: 26, fontWeight: '800', marginTop: 8 },
-  tagline: { fontSize: 14, marginBottom: 8 },
-  card: {
+  worldTabText: { fontSize: font.body, fontWeight: '700' },
+
+  scroll: { padding: space.lg, paddingBottom: 48, gap: space.md },
+  hello: { fontSize: font.small, fontWeight: '600', marginTop: space.sm },
+  hero: { fontSize: font.hero, fontWeight: '800', marginBottom: space.xs },
+
+  section: { gap: space.sm },
+  sectionTitle: { fontSize: font.h2, fontWeight: '800' },
+
+  projectsRow: { gap: space.md, paddingVertical: space.xs, paddingRight: space.lg },
+  projectCard: { width: 190, borderRadius: radius.lg, borderWidth: 1, padding: space.md, gap: 6 },
+  projectThumb: { height: 90, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  projectImg: { width: '100%', height: '100%' },
+  projectEmoji: { fontSize: 40 },
+  projectTitle: { fontSize: font.body, fontWeight: '800', marginTop: 4 },
+  projectDesc: { fontSize: font.tiny },
+  projectPct: { fontSize: font.tiny, fontWeight: '800', alignSelf: 'flex-end' },
+
+  searchBox: {
     flexDirection: 'row',
-    gap: 14,
-    padding: 14,
-    borderRadius: 18,
+    alignItems: 'center',
+    gap: space.sm,
+    paddingHorizontal: space.md,
+    height: 46,
+    borderRadius: radius.md,
     borderWidth: 1,
-    alignItems: 'center',
   },
-  cardEmojiBox: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardEmoji: { fontSize: 30 },
-  cardBody: { flex: 1, gap: 4 },
-  cardTitle: { fontSize: 17, fontWeight: '700' },
-  cardMeta: { fontSize: 13, lineHeight: 18 },
-  badgeRow: { flexDirection: 'row', gap: 6, marginTop: 4 },
-  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  badgeText: { fontSize: 11, fontWeight: '700' },
-  empty: {
-    marginTop: 24,
-    padding: 28,
-    borderRadius: 20,
-    borderWidth: 1,
-    alignItems: 'center',
-    gap: 8,
-  },
-  emptyEmoji: { fontSize: 44 },
-  emptyTitle: { fontSize: 18, fontWeight: '800' },
-  emptyText: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  searchInput: { flex: 1, fontSize: font.body },
+
+  chipsRow: { gap: space.sm, paddingVertical: space.xs, paddingRight: space.lg },
+  chip: { paddingHorizontal: space.md, paddingVertical: 8, borderRadius: radius.pill, borderWidth: 1.5 },
+  chipText: { fontSize: font.small, fontWeight: '700' },
+
+  card: { flexDirection: 'row', gap: space.md, padding: space.md, borderRadius: radius.lg, borderWidth: 1, alignItems: 'center' },
+  cardImgBox: { width: 84, height: 84, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  cardImg: { width: '100%', height: '100%' },
+  cardEmoji: { fontSize: 38 },
+  premiumTag: { position: 'absolute', top: 4, left: 4, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  premiumText: { fontSize: 9, fontWeight: '800' },
+  cardBody: { flex: 1, gap: 3 },
+  cardTitle: { fontSize: font.h2, fontWeight: '800' },
+  cardSub: { fontSize: font.small },
+  metaRow: { flexDirection: 'row', gap: 6, marginTop: 4, flexWrap: 'wrap' },
+  meta: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm },
+  metaText: { fontSize: font.tiny, fontWeight: '700' },
+
+  progressTrack: { height: 7, borderRadius: 4, overflow: 'hidden', marginTop: 4 },
+  progressFill: { height: '100%', borderRadius: 4 },
+
+  empty: { textAlign: 'center', marginTop: space.xl, fontSize: font.body },
+
+  tricoWrap: { flex: 1, padding: space.lg, justifyContent: 'center' },
+  tricoCard: { padding: space.xxl, borderRadius: radius.xl, borderWidth: 1, alignItems: 'center', gap: space.sm },
+  tricoEmoji: { fontSize: 52 },
+  tricoTitle: { fontSize: font.title, fontWeight: '800' },
+  tricoText: { fontSize: font.body, textAlign: 'center', lineHeight: 21 },
 });

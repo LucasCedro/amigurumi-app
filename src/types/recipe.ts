@@ -18,10 +18,8 @@ export interface Segment {
 }
 
 /**
- * Um bloco de repetição dentro de uma carreira.
- * Ex.: pattern [2pb, 1aum] com times 6 => "2 pb, 1 aum (24)".
- * Carreiras com deslocamento usam vários grupos, ex.:
- * [{2pb},{1aum},times1] + [{4pb,1aum} times5] + [{2pb} times1].
+ * Bloco de repetição dentro de uma carreira.
+ * Carreiras com deslocamento usam vários grupos.
  */
 export interface Group {
   pattern: Segment[];
@@ -36,12 +34,14 @@ export interface StitchRound {
   repeatRows?: number;
   isMagicRing?: boolean;
   groups: Group[];
-  /** checksum: total de pontos ao fim da carreira (o nº entre parênteses) */
+  /** total de pontos ao fim da carreira (o nº entre parênteses) */
   totalStitches: number;
+  /** id da cor ativa a partir desta carreira (dispara aviso de troca) */
+  color?: string;
   note?: string;
 }
 
-/** Passo informativo, só texto + botão "Próximo" (montagem, enchimento, etc.) */
+/** Passo só de texto (montagem, enchimento, arremate) */
 export interface NoteRound {
   kind: 'note';
   label?: string;
@@ -52,15 +52,73 @@ export type Round = StitchRound | NoteRound;
 
 export type Difficulty = 'iniciante' | 'intermediario' | 'avancado';
 
+export type Category =
+  | 'bichos'
+  | 'bonecas'
+  | 'comidinhas'
+  | 'florais'
+  | 'chaveiros'
+  | 'decoracao'
+  | 'base';
+
+export interface RecipeColor {
+  id: string;
+  label: string;
+  hex: string;
+}
+
+export type MaterialType = 'fio' | 'agulha' | 'olhos' | 'enchimento' | 'extra';
+
+export interface Material {
+  type: MaterialType;
+  label: string;
+  color?: string;
+  amount?: string;
+}
+
+/** Uma peça do amigurumi (cabeça, braço, etc.). `qty` = quantas fazer. */
+export interface Piece {
+  id: string;
+  name: string;
+  qty: number;
+  startColor?: string;
+  note?: string;
+  rounds: Round[];
+}
+
+export interface AssemblyStep {
+  step: number;
+  text: string;
+  image?: string;
+}
+
+export interface RecipeAuthor {
+  name: string;
+  credit?: string;
+  url?: string;
+}
+
 export interface Recipe {
   id: string;
   title: string;
+  subtitle?: string;
   world: World;
+  category: Category;
+  tags: string[];
   difficulty: Difficulty;
+  estimatedHours?: number;
+  finalSizeCm?: number;
   isPremium: boolean;
   emoji?: string;
+  /** chave da imagem de capa (ver recipe-images.ts) */
+  cover?: string;
+  gallery?: string[];
+  author?: RecipeAuthor;
+  colors?: RecipeColor[];
   description?: string;
-  materials: string[];
+  materials: Material[];
   notes?: string[];
-  rounds: Round[];
+  pieces: Piece[];
+  assembly?: AssemblyStep[];
+  video?: string;
 }

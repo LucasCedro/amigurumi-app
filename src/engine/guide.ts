@@ -1,9 +1,9 @@
 import { STITCHES } from '@/data/stitches';
-import type { Recipe, Round, StitchRound, StitchType } from '@/types/recipe';
+import type { Piece, Round, StitchRound, StitchType } from '@/types/recipe';
 
 export interface GuideStitch {
   stitch: StitchType;
-  /** total de pontos produzidos na volta atual até (e incluindo) este ponto */
+  /** total de pontos produzidos na volta até (e incluindo) este ponto */
   producedAfter: number;
   groupNote?: string;
 }
@@ -11,7 +11,6 @@ export interface GuideStitch {
 export interface GuideRound {
   key: string;
   kind: 'stitches' | 'note';
-  /** número da carreira (conta só rounds de pontos) */
   number?: number;
   isMagicRing?: boolean;
   totalStitches?: number;
@@ -19,21 +18,30 @@ export interface GuideRound {
   note?: string;
   text?: string;
   label?: string;
+  /** id da cor ativa nesta carreira */
+  color?: string;
+  /** true quando muda de cor em relação à carreira anterior */
+  colorChanged?: boolean;
 }
 
 /**
- * Expande a receita numa lista linear de carreiras-guia. `repeatRows` vira N
- * carreiras individuais e cada grupo é achatado ponto a ponto para o contador.
+ * Expande as carreiras de uma peça numa lista linear de carreiras-guia,
+ * achatando repetições ponto a ponto e rastreando troca de cor.
  */
-export function buildGuide(recipe: Recipe): GuideRound[] {
+export function buildGuide(rounds: Round[], startColor?: string): GuideRound[] {
   const out: GuideRound[] = [];
   let carreira = 0;
+  let activeColor = startColor;
 
-  recipe.rounds.forEach((round, ri) => {
+  rounds.forEach((round, ri) => {
     if (round.kind === 'note') {
       out.push({ key: `n-${ri}`, kind: 'note', text: round.text, label: round.label });
       return;
     }
+
+    const roundColor = round.color ?? activeColor;
+    const changed = roundColor !== activeColor;
+    activeColor = roundColor;
 
     const copies = round.repeatRows ?? 1;
     for (let c = 0; c < copies; c++) {
@@ -59,6 +67,8 @@ export function buildGuide(recipe: Recipe): GuideRound[] {
         isMagicRing: round.isMagicRing,
         totalStitches: round.totalStitches,
         note: round.note,
+        color: roundColor,
+        colorChanged: changed && c === 0,
         steps,
       });
     }
@@ -67,23 +77,17 @@ export function buildGuide(recipe: Recipe): GuideRound[] {
   return out;
 }
 
+export function buildPieceGuide(piece: Piece): GuideRound[] {
+  return buildGuide(piece.rounds, piece.startColor);
+}
+
 export function countCarreiras(guide: GuideRound[]): number {
   return guide.reduce((acc, r) => acc + (r.kind === 'stitches' ? 1 : 0), 0);
 }
 
-/** valida se o produzido final bate com o totalStitches declarado (dev) */
-export function validateRecipe(recipe: Recipe): string[] {
-  const errors: string[] = [];
-  buildGuide(recipe).forEach((r) => {
-    if (r.kind !== 'stitches' || !r.steps?.length) return;
-    const produced = r.steps[r.steps.length - 1].producedAfter;
-    if (produced !== r.totalStitches) {
-      errors.push(
-        `${recipe.id} carreira ${r.number}: produzido ${produced} ≠ total ${r.totalStitches}`,
-      );
-    }
-  });
-  return errors;
+/** nº de passos "atômicos" (cada ponto + cada nota = 1) numa peça */
+export function countSteps(guide: GuideRound[]): number {
+  return guide.reduce((acc, r) => acc + (r.kind === 'note' ? 1 : r.steps!.length), 0);
 }
 
 const SEGMENTS = (round: StitchRound) =>
@@ -92,7 +96,7 @@ const SEGMENTS = (round: StitchRound) =>
     return g.times > 1 && round.groups.length > 1 ? `[${segs}] x${g.times}` : segs;
   });
 
-/** texto da carreira como aparece numa receita escrita (tela de detalhe) */
+/** texto da carreira como numa receita escrita */
 export function roundToText(round: Round): string {
   if (round.kind === 'note') return round.text;
   let body = SEGMENTS(round).join(', ');
