@@ -1,5 +1,3 @@
-export type World = 'amigurumi' | 'trico';
-
 export type StitchType =
   | 'mr' // anel mágico
   | 'pb' // ponto baixo
@@ -52,6 +50,32 @@ export type Round = StitchRound | NoteRound;
 
 export type Difficulty = 'iniciante' | 'intermediario' | 'avancado';
 
+/** espessura da linha — muda o tamanho final e a agulha, não a técnica */
+export type YarnWeight = 'lace' | 'fine' | 'medium' | 'bulky';
+
+/** Formas geométricas paramétricas (geradas pela engine em runtime). */
+export type BaseShape =
+  | 'disc'
+  | 'sphere'
+  | 'hemisphere'
+  | 'egg'
+  | 'cylinder'
+  | 'vase'
+  | 'cone'
+  | 'rod';
+
+export interface BaseConfig {
+  shape: BaseShape;
+  sizesCm: number[];
+  defaultSizeCm: number;
+  /** carreiras de altura no tamanho padrão (cilindro, vaso, bastão) */
+  heightRoundsAtDefault?: number;
+  /** multiplicador das carreiras retas da esfera (padrão 1) */
+  bodyRoundsRatio?: number;
+  /** pontos fixos do bastão (padrão 12) */
+  rodStitchCount?: number;
+}
+
 export type Category =
   | 'bichos'
   | 'bonecas'
@@ -59,7 +83,12 @@ export type Category =
   | 'florais'
   | 'chaveiros'
   | 'decoracao'
-  | 'base';
+  | 'base'
+  | 'tapetes'
+  | 'roupas'
+  | 'casa'
+  | 'bolsas'
+  | 'acessorios';
 
 export interface RecipeColor {
   id: string;
@@ -102,15 +131,21 @@ export interface Recipe {
   id: string;
   title: string;
   subtitle?: string;
-  world: World;
   category: Category;
   tags: string[];
   difficulty: Difficulty;
+  yarnWeight?: YarnWeight;
   estimatedHours?: number;
   finalSizeCm?: number;
+  /** true se priceCents > 0 */
   isPremium: boolean;
+  /** preço em centavos (0 = grátis). Fonte da verdade do premium. */
+  priceCents?: number;
+  currency?: string;
+  /** SKU do Google Play Billing (ex: receita_ursinho_premium) */
+  playProductId?: string;
   emoji?: string;
-  /** chave da imagem de capa (ver recipe-images.ts) */
+  /** chave local (recipe-images) OU url http */
   cover?: string;
   gallery?: string[];
   author?: RecipeAuthor;
@@ -121,4 +156,14 @@ export interface Recipe {
   pieces: Piece[];
   assembly?: AssemblyStep[];
   video?: string;
+  /** slug estável (ex: base-esfera) — UUID no Supabase, id local no bundle */
+  localSlug?: string;
+  /** Se presente, `pieces` é gerado pela engine conforme o tamanho escolhido. */
+  base?: BaseConfig;
+  /** origem: seed local ou supabase */
+  source?: 'local' | 'remote';
+  /** Idioma em que o conteúdo foi escrito (metadado). */
+  contentLocale?: 'pt' | 'en';
+  /** Catálogo oficial Amiguide — app pode aplicar overlay EN no cliente. */
+  isHouseCatalog?: boolean;
 }

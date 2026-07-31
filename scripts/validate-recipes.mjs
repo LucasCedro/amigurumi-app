@@ -1,18 +1,39 @@
 // Valida a matemática das receitas (produzido x totalStitches), cores e capas.
 // Uso: node scripts/validate-recipes.mjs
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { BASE_MANIFEST, BASE_SHARED } from './bases-manifest.mjs';
+import { materializeBase } from './materialize-base.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 
 const PRODUCES = { mr: 0, pb: 1, aum: 2, dim: 1, pa: 1, mpa: 1, pbx: 1, corr: 1, blo: 1, flo: 1 };
 
-const recipes = JSON.parse(readFileSync(join(root, 'src/data/recipes.json'), 'utf8'));
+const craft = JSON.parse(readFileSync(join(root, 'src/data/recipes.json'), 'utf8'));
+const bases = BASE_MANIFEST.map((b) =>
+  materializeBase(
+    b.base,
+    {
+      ...BASE_SHARED,
+      id: b.id,
+      title: b.title,
+      emoji: b.emoji,
+      cover: b.cover,
+      description: b.description,
+      tags: b.tags,
+      category: 'base',
+      difficulty: 'iniciante',
+      isPremium: false,
+    },
+    b.base.defaultSizeCm,
+  ),
+);
+const recipes = [...bases, ...craft];
+
 const imageKeys = new Set(
   Object.keys(
-    // extrai as chaves declaradas em recipe-images.ts sem importar (evita TS)
     Object.fromEntries(
       [...readFileSync(join(root, 'src/data/recipe-images.ts'), 'utf8').matchAll(/'([^']+\/cover)'/g)].map(
         (m) => [m[1], true],
@@ -64,7 +85,7 @@ for (const recipe of recipes) {
   }
 }
 
-console.log(`Receitas: ${recipes.length}`);
+console.log(`Formas: ${bases.length} · Projetos: ${craft.length}`);
 console.log(info.join('\n'));
 
 if (errors.length) {

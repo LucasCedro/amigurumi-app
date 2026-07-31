@@ -1,0 +1,3 @@
+-- Migrations fatiadas (001–007) ficam como histórico.
+-- Setup do zero / re-run: use ../SETUP.sql (arquivo único).
+-- QA manual: ../../scripts/qa-checklist.md

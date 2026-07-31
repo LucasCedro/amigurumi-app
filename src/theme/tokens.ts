@@ -18,12 +18,25 @@ export const space = {
 } as const;
 
 export const font = {
-  hero: 30,
-  title: 22,
-  h2: 18,
-  body: 15,
-  small: 13,
-  tiny: 11,
+  hero: 34,
+  title: 25,
+  h2: 20,
+  body: 17,
+  small: 15,
+  tiny: 13,
+} as const;
+
+/**
+ * Famílias carregadas em _layout.tsx (expo-google-fonts).
+ * `display` = títulos/números (Baloo 2, arredondada e cheia de personalidade).
+ * `body`/`bodyBold` = texto corrente (Quicksand, humanista e suave).
+ */
+export const typeface = {
+  display: 'Baloo2_700Bold',
+  displaySemi: 'Baloo2_600SemiBold',
+  body: 'Quicksand_500Medium',
+  bodyBold: 'Quicksand_700Bold',
+  bodySemi: 'Quicksand_600SemiBold',
 } as const;
 
 export const semantic = {
@@ -54,11 +67,16 @@ export const DIFFICULTY_LABEL = {
 } as const;
 
 export const CATEGORY_LABEL = {
-  bichos: 'Bichinhos',
+  bichos: 'Bichos',
   bonecas: 'Bonecas',
-  comidinhas: 'Comidinhas',
+  comidinhas: 'Comidas',
   florais: 'Florais',
   chaveiros: 'Chaveiros',
   decoracao: 'Decoração',
-  base: 'Bases',
+  base: 'Formas',
+  tapetes: 'Tapetes',
+  roupas: 'Roupas',
+  casa: 'Cama, Mesa & Banho',
+  bolsas: 'Bolsas',
+  acessorios: 'Acessórios',
 } as const;
